@@ -36,7 +36,8 @@ if curl -fsS "${auth[@]}" "$API/releases/tags/$TAG" >/dev/null 2>&1; then
 fi
 
 log "Push du code et du tag $TAG…"
-git tag -a "$TAG" -m "Compteurs liés $VERSION"
+# Tag créé seulement s'il n'existe pas (relance possible après un échec de push)
+git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || git tag -a "$TAG" -m "Compteurs liés $VERSION"
 # Authentification par en-tête : le jeton n'est jamais écrit dans .git/config
 basic=$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)
 git -c http.extraHeader="Authorization: Basic $basic" push origin HEAD "$TAG"
