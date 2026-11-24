@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Compteurs liés</title>
+<style>
+:root {
+  --bg: #FFC5D3;
+  --surface: #FFE6EC;
+  --ink: #3A1622;
+  --muted: #7A3F52;
+  --line: #F2A6BA;
+  --accent: #B0315A;
+  --accent-ink: #FFF5F8;
+  --link: #6A2C9E;
+  --link-bg: #F6E2F7;
+  --danger: #B3261E;
+  --hit: #FFB0C4;
+  --sound: #1F5F8B;
+  --sound-bg: #DCEEFB;
+  --marks: #2E6B3A;
+  --marks-bg: #DDF3DF;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+*, *::before, *::after { box-sizing: inherit; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.4;
+  -webkit-text-size-adjust: 100%;
+}
+button, input, select { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+
+main { max-width: 560px; margin: 0 auto; padding: 22px 16px 40px; }
+
+.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.top-actions { display: flex; gap: 2px; margin-left: auto; }
+h1 {
+  margin: 0;
+  font-size: clamp(28px, 8vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+.intro { margin: 8px 0 20px; color: var(--muted); font-size: 15px; max-width: 46ch; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 12px 14px 14px;
+  margin-bottom: 14px;
+}
+.card.hit { animation: hit 0.7s ease-out; }
+@keyframes hit { from { background: var(--hit); } to { background: var(--surface); } }
+
+.card-head { display: flex; align-items: center; gap: 8px; }
+.name {
+  flex: 1; min-width: 0;
+  border: 0; background: transparent; color: var(--ink);
+  font-size: 18px; font-weight: 600; letter-spacing: -0.01em;
+  padding: 8px; margin-left: -8px; border-radius: 8px;
+}
+
+.counter {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 72px;
+  gap: 10px;
+  align-items: center;
+  margin: 14px 0 14px;
+}
+.step {
+  height: 72px;
+  border-radius: 16px;
+  border: 1.5px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-size: 36px; font-weight: 600; line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none; -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.step.plus { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.step:active { transform: scale(0.96); }
+
+.valuewrap { position: relative; min-width: 0; }
+.value {
+  width: 100%;
+  text-align: center;
+  border: 0; background: transparent; color: var(--ink);
+  font-size: clamp(36px, 12vw, 58px);
+  font-weight: 800; letter-spacing: -0.03em; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  padding: 6px 0;
+  -moz-appearance: textfield; appearance: textfield;
+}
+.value::-webkit-outer-spin-button, .value::-webkit-inner-spin-button,
+.n::-webkit-outer-spin-button, .n::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.pop {
+  position: absolute; left: 50%; top: -10px;
+  transform: translateX(-50%);
+  font-size: 20px; font-weight: 800;
+  pointer-events: none;
+  animation: rise 0.9s ease-out forwards;
+}
+.pop.up { color: var(--accent); }
+.pop.down { color: var(--danger); }
+@keyframes rise {
+  0% { opacity: 0; transform: translate(-50%, 8px); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -22px); }
+}
+
+/* Chrono : petite barre collée en haut de l'écran */
+.chrono {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 5px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.chrono-time {
+  min-width: 4.5em; text-align: center;
+  font-size: 16px; font-weight: 700;
+  font-variant-numeric: tabular-nums; letter-spacing: 0.01em;
+}
+.chrono button {
+  height: 30px; padding: 0 12px;
+  border-radius: 999px; border: 1.5px solid var(--accent);
+  background: var(--accent); color: var(--accent-ink);
+  font-size: 13px; font-weight: 700;
+  cursor: pointer; touch-action: manipulation;
+}
+.chrono button.running { background: transparent; color: var(--accent); }
+.chrono button.ghost { border-color: transparent; background: transparent; color: var(--muted); font-weight: 600; }
+.chrono button.ghost.armed { color: var(--danger); }
+
+/* Easter egg : cœur plein écran */
+h1 { user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.love {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 197, 211, 0.85);
+  animation: love-in 0.4s ease-out;
+}
+.love[hidden] { display: none; }
+.love svg {
+  width: min(80vw, 80vh); height: auto;
+  filter: drop-shadow(0 12px 30px rgba(176, 49, 90, 0.35));
+  animation: beat 1s ease-in-out infinite;
+}
+@keyframes love-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes beat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.12); }
+  30% { transform: scale(0.98); }
+  45% { transform: scale(1.08); }
+}
+
+/* Options repliables (liens + rappel sonore) */
+details.opts { border-top: 1px solid var(--line); }
+details.opts > summary {
+  list-style: none;
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 0 2px;
+  color: var(--muted); font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+details.opts > summary::-webkit-details-marker { display: none; }
+details.opts > summary::before {
+  content: "▸"; display: inline-block; width: 1em; text-align: center;
+  transition: transform 0.15s;
+}
+details.opts[open] > summary::before { transform: rotate(90deg); }
+details.opts[open] > summary { padding-bottom: 8px; }
+.tag {
+  font-size: 12px; font-weight: 600;
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--link-bg); color: var(--link);
+}
+.tag.sound { background: var(--sound-bg); color: var(--sound); }
+.tag.marks { background: var(--marks-bg); color: var(--marks); max-width: 12em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Affichage compact : cartes et compteurs plus petits */
+.compact main { padding-top: 14px; }
+.compact .intro { display: none; }
+.compact .top { margin-bottom: 12px; }
+.compact h1 { font-size: clamp(22px, 6vw, 30px); }
+.compact .card { padding: 6px 12px 8px; margin-bottom: 10px; border-radius: 16px; }
+.compact .name { font-size: 16px; padding: 4px 8px; }
+.compact .counter { grid-template-columns: 52px minmax(0, 1fr) 52px; gap: 8px; margin: 4px 0 6px; }
+.compact .step { height: 52px; font-size: 28px; border-radius: 12px; }
+.compact .value { font-size: clamp(28px, 9vw, 40px); padding: 2px 0; }
+.compact details.opts > summary { padding-top: 6px; }
+
+.links {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.link {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  background: var(--link-bg);
+  border-radius: 12px;
+  padding: 8px 8px 8px 12px;
+}
+.link > span { color: var(--link); font-weight: 600; font-size: 14px; }
+.link select, .link .n, .link .list {
+  height: 40px;
+  border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink);
+  border-radius: 10px;
+  padding: 0 10px;
+  font-size: 16px;
+}
+.link select { flex: 1 1 130px; min-width: 0; }
+.link .n { width: 76px; text-align: center; -moz-appearance: textfield; appearance: textfield; }
+.x {
+  width: 40px; height: 40px;
+  border: 0; background: transparent;
+  color: var(--link);
+  font-size: 24px; line-height: 1;
+  border-radius: 10px; cursor: pointer;
+}
+.link.sound { background: var(--sound-bg); }
+.link.sound > span { color: var(--sound); }
+.link.sound .x { color: var(--sound); }
+.adds { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.addlink.sound-btn { border-color: var(--sound); color: var(--sound); }
+/* Rappel aux valeurs définies : fond vert pâle */
+.link.marks { background: var(--marks-bg); }
+.link.marks > span { color: var(--marks); }
+.link.marks .x { color: var(--marks); }
+.link .list { flex: 1 1 140px; min-width: 0; }
+.addlink.marks-btn { border-color: var(--marks); color: var(--marks); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 4px; }
+.chip {
+  font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;
+  padding: 2px 9px; border-radius: 999px;
+  border: 1.5px solid var(--marks); color: var(--marks); background: transparent;
+}
+.chip.done { background: var(--marks); color: #F4FBF5; }
+/* Toutes les valeurs atteintes : rappel réduit en tout petit */
+.marks-mini {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; color: var(--marks);
+}
+.marks-mini button {
+  border: 0; background: none; color: var(--marks);
+  font-size: 12px; text-decoration: underline; padding: 4px; cursor: pointer;
+}
+.marks-mini .x { width: 28px; height: 28px; font-size: 18px; text-decoration: none; }
+.tag.mini { font-size: 11px; padding: 1px 6px; }
+.addlink {
+  align-self: flex-start;
+  background: none;
+  border: 1.5px dashed var(--link);
+  color: var(--link);
+  border-radius: 12px;
+  padding: 9px 14px;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer;
+}
+.hint, .empty { margin: 0; color: var(--muted); font-size: 14px; }
+.empty { padding: 24px 0; text-align: center; font-size: 16px; }
+
+.ghost {
+  background: none; border: 0;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 8px; border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ghost.armed { color: var(--danger); font-weight: 600; }
+
+.primary {
+  width: 100%; height: 58px;
+  border: 0; border-radius: 16px;
+  background: var(--accent); color: var(--accent-ink);
+  font-size: 17px; font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop { animation: none; }
+  .card.hit { animation: none; background: var(--hit); }
+  .step:active { transform: none; }
+  .love, .love svg { animation: none; }
+}
+</style>
+</head>
+<body>
+<div class="love" id="love" hidden aria-hidden="true">
+  <svg viewBox="0 0 32 29" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#E8356F" d="M23.6 0C20.2 0 17.4 2 16 4.8 14.6 2 11.8 0 8.4 0 3.8 0 0 3.8 0 8.4c0 9.4 16 20.6 16 20.6s16-11.2 16-20.6C32 3.8 28.2 0 23.6 0z"/>
+  </svg>
+</div>
+<div class="chrono" role="timer" aria-label="Chrono">
+  <span class="chrono-time" id="chrono-time">00:00</span>
+  <button id="chrono-start" type="button">Démarrer</button>
+  <button class="ghost" id="chrono-reset" type="button" hidden>Remettre à 0</button>
+</div>
+<main>
+  <header class="top">
+    <h1>Compteurs liés</h1>
+    <div class="top-actions">
+      <button class="ghost" id="density" type="button">Compact</button>
+      <button class="ghost" id="reset" type="button">Tout remettre à zéro</button>
+    </div>
+  </header>
+  <p class="intro">Un lien fait varier un autre compteur à chaque tranche franchie : par tranche de 1, à chaque clic ; par tranche de 10, tous les 10. Avec −, le lien se défait dans l’autre sens. Les liens se suivent en chaîne.</p>
+
+  <section id="list" aria-label="Compteurs"></section>
+
+  <button class="primary" id="add" type="button">Ajouter un compteur</button>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  const KEY = "compteurs-lies-v1";
+  const round = x => Math.round(x * 1e6) / 1e6;
+  const tiers = (v, every) => Math.floor(round(v / every));
+  const esc = s => String(s).replace(/[&<>"']/g, ch => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]
+  ));
+  const label = c => c.name.trim() || "Sans nom";
+  const fmt = n => n.toLocaleString("fr-FR");
+  // Vibrations : pont natif Android (AndroidHaptics) si présent, sinon API web
+  function tick() {
+    try {
+      if (window.AndroidHaptics) AndroidHaptics.tick();
+      else if (navigator.vibrate) navigator.vibrate(15);
+    } catch (e) { /* ignoré */ }
+  }
+  function vibe(pattern) {
+    try {
+      if (window.AndroidHaptics) AndroidHaptics.pattern(pattern.join(","));
+      else if (navigator.vibrate) navigator.vibrate(pattern);
+    } catch (e) { /* ignoré */ }
+  }
+  // "5, 12; 30" -> [5, 12, 30] (séparateurs : virgule, point-virgule, espace ; décimales avec un point)
+  const parseMarks = text => String(text).split(/[,;\s]+/).map(parseFloat).filter(Number.isFinite);
+  // Cartes dont le rappel aux valeurs est rouvert en édition alors que tout est atteint
+  const editMarks = new Set();
+  const marksState = c => {
+    const vals = c.marks ? parseMarks(c.marks.text) : [];
+    return { vals, all: vals.length > 0 && vals.every(m => c.value >= m) };
+  };
+  const chipsHtml = c => marksState(c).vals
+    .map(m => `<span class="chip${c.value >= m ? " done" : ""}">${c.value >= m ? "✓" : ""}${esc(fmt(m))}</span>`).join("");
+  // Zone du rappel aux valeurs : saisie + pastilles, ou version mini si tout est atteint
+  function marksHtml(c) {
+    if (!c.marks) return "";
+    const { all } = marksState(c);
+    if (all && !editMarks.has(c.id)) {
+      return `<div class="marks-mini"><span>✓ toutes atteintes</span>`
+        + `<button type="button" data-action="editmarks">modifier</button>`
+        + `<button class="x" type="button" data-action="unmarks" aria-label="Retirer le rappel aux valeurs">×</button></div>`;
+    }
+    return `<div class="link marks"><span>Rappel aux valeurs</span><input class="list" data-field="marks" type="text" inputmode="text" autocomplete="off" placeholder="ex : 5, 12, 30" value="${esc(c.marks.text)}" aria-label="Valeurs déclenchant le rappel, séparées par des virgules"><button class="x" type="button" data-action="unmarks" aria-label="Retirer le rappel aux valeurs">×</button></div>`
+      + `<div class="chips">${chipsHtml(c)}</div>`;
+  }
+  // Étiquettes du résumé replié
+  function tagsHtml(c) {
+    let tags = "";
+    if (c.links.length) tags += ` <span class="tag">${c.links.length} lien${c.links.length > 1 ? "s" : ""}</span>`;
+    if (c.sound) tags += ` <span class="tag sound">son /${esc(c.sound.every)}</span>`;
+    const { vals, all } = marksState(c);
+    if (all) tags += ` <span class="tag marks mini">✓ valeurs</span>`;
+    else if (vals.length) tags += ` <span class="tag marks">🔔 ${vals.map(m => (c.value >= m ? "✓" : "") + esc(fmt(m))).join(" ")}</span>`;
+    return tags;
+  }
+  // Rafraîchit pastilles + résumé d'une carte sans tout re-rendre
+  function refreshMarks(card, c, keepInput) {
+    const tags = card.querySelector("summary .tags");
+    if (tags) tags.innerHTML = tagsHtml(c);
+    const zone = card.querySelector(".marks-zone");
+    if (!zone) return;
+    if (keepInput) { const ch = zone.querySelector(".chips"); if (ch) ch.innerHTML = chipsHtml(c); }
+    else zone.innerHTML = marksHtml(c);
+  }
+
+  function mk(id) { return { id, name: "Compteur " + id, value: 0, links: [], sound: null, marks: null }; }
+  function fresh() { return { nextId: 3, counters: [mk(1), mk(2)] }; }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return null;
+      const s = JSON.parse(raw);
+      if (!s || !Array.isArray(s.counters)) return null;
+      const seen = new Set();
+      const counters = [];
+      for (const c of s.counters) {
+        if (!c || !Number.isFinite(c.id) || seen.has(c.id)) continue;
+        seen.add(c.id);
+        counters.push({
+          id: c.id,
+          marks: c.marks && typeof c.marks.text === "string" ? { text: c.marks.text } : null,
+          sound: c.sound && Number.isFinite(c.sound.every) && c.sound.every > 0 ? { every: c.sound.every } : null,
+          name: String(c.name == null ? "" : c.name),
+          value: Number.isFinite(c.value) ? c.value : 0,
+          links: Array.isArray(c.links)
+            ? c.links.filter(l => l && Number.isFinite(l.to) && Number.isFinite(l.n)).map(l => ({ to: l.to, n: l.n, every: Number.isFinite(l.every) && l.every > 0 ? l.every : 1 }))
+            : []
+        });
+      }
+      for (const c of counters) {
+        c.links = c.links.filter(l => l.to !== c.id && counters.some(o => o.id === l.to));
+      }
+      const maxId = counters.reduce((m, c) => Math.max(m, c.id), 0);
+      return { nextId: Math.max(Number.isFinite(s.nextId) ? s.nextId : 0, maxId + 1), counters };
+    } catch (e) {
+      return null;
+    }
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* stockage indisponible */ }
+  }
+
+  let state = load() || fresh();
+  const byId = id => state.counters.find(c => c.id === id);
+  const list = document.getElementById("list");
+  // Cartes dont les options sont dépliées (conservé entre deux render)
+  const openOpts = new Set();
+
+  // Affichage compact/grand, mémorisé localement
+  const DENSITY_KEY = "compteurs-lies-affichage";
+  const densityBtn = document.getElementById("density");
+  function applyDensity(compact) {
+    document.documentElement.classList.toggle("compact", compact);
+    densityBtn.textContent = compact ? "Grand" : "Compact";
+  }
+  let compact = false;
+  try { compact = localStorage.getItem(DENSITY_KEY) === "compact"; } catch (e) { /* stockage indisponible */ }
+  applyDensity(compact);
+  densityBtn.addEventListener("click", () => {
+    compact = !compact;
+    applyDensity(compact);
+    try { localStorage.setItem(DENSITY_KEY, compact ? "compact" : "grand"); } catch (e) { /* ignoré */ }
+  });
+
+  function options(c, link, others) {
+    return others.map(o => {
+      const used = c.links.some(l => l !== link && l.to === o.id);
+      return `<option value="${o.id}"${o.id === link.to ? " selected" : ""}${used ? " disabled" : ""}>${esc(label(o))}</option>`;
+    }).join("");
+  }
+
+  function cardHtml(c) {
+    const others = state.counters.filter(o => o.id !== c.id);
+    const free = others.filter(o => !c.links.some(l => l.to === o.id));
+    const rows = c.links.map((l, i) => `
+      <div class="link" data-i="${i}">
+        <span>Par tranche de</span>
+        <input class="n" data-field="every" type="number" step="any" min="0" inputmode="decimal" value="${l.every}" aria-label="Taille de la tranche">
+        <span>fait varier</span>
+        <select aria-label="Compteur à faire varier">${options(c, l, others)}</select>
+        <span>de</span>
+        <input class="n" data-field="n" type="number" step="any" inputmode="decimal" value="${l.n}" aria-label="Nombre ajouté à chaque tranche">
+        <button class="x" type="button" data-action="unlink" aria-label="Supprimer ce lien">×</button>
+      </div>`).join("");
+    let foot = "";
+    const soundRow = c.sound ? `<div class="link sound"><span>Rappel sonore tous les</span><input class="n" data-field="sound" type="number" step="any" min="0" inputmode="decimal" value="${c.sound.every}" aria-label="Rappel sonore : taille de la tranche"><button class="x" type="button" data-action="unsound" aria-label="Retirer le rappel sonore">×</button></div>` : "";
+    const marksRow = c.marks ? `<div class="marks-zone">${marksHtml(c)}</div>` : "";
+    if (free.length) foot += `<button class="addlink" type="button" data-action="addlink">Lier à un autre compteur</button>`;
+    else if (!others.length) foot = `<p class="hint">Ajoute un deuxième compteur pour pouvoir les lier.</p>`;
+    if (!c.sound) foot += `<button class="addlink sound-btn" type="button" data-action="addsound">Ajouter un rappel sonore</button>`;
+    if (!c.marks) foot += `<button class="addlink marks-btn" type="button" data-action="addmarks">Ajouter un rappel aux valeurs</button>`;
+    if (foot) foot = `<div class="adds">${foot}</div>`;
+    // Résumé affiché sur la ligne repliée
+    return `
+      <article class="card" data-id="${c.id}">
+        <div class="card-head">
+          <input class="name" data-field="name" value="${esc(c.name)}" maxlength="40" autocomplete="off" aria-label="Nom du compteur">
+          <button class="ghost" type="button" data-action="delete">Supprimer</button>
+        </div>
+        <div class="counter">
+          <button class="step" type="button" data-action="dec" aria-label="Retirer 1">−</button>
+          <div class="valuewrap">
+            <input class="value" data-field="value" type="number" step="any" inputmode="decimal" value="${c.value}" aria-label="Valeur du compteur">
+          </div>
+          <button class="step plus" type="button" data-action="inc" aria-label="Ajouter 1">+</button>
+        </div>
+        <details class="opts"${openOpts.has(c.id) ? " open" : ""}>
+          <summary>Options<span class="tags">${tagsHtml(c)}</span></summary>
+          <div class="links">${rows}${soundRow}${marksRow}${foot}</div>
+        </details>
+      </article>`;
+  }
+
+  function render() {
+    if (!state.counters.length) {
+      list.innerHTML = `<p class="empty">Aucun compteur. Ajoutes-en un pour commencer.</p>`;
+      return;
+    }
+    list.innerHTML = state.counters.map(cardHtml).join("");
+  }
+
+  function showPop(card, amt) {
+    if (!amt) return;
+    const wrap = card.querySelector(".valuewrap");
+    const s = document.createElement("span");
+    s.className = "pop " + (amt > 0 ? "up" : "down");
+    s.textContent = (amt > 0 ? "+" : "−") + fmt(Math.abs(amt));
+    wrap.appendChild(s);
+    setTimeout(() => s.remove(), 900);
+  }
+  let audio = null;
+  function beep() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!audio) audio = new AC();
+      if (audio.state === "suspended") audio.resume();
+      const t = audio.currentTime;
+      [[880, 0], [1320, 0.16]].forEach(([freq, d]) => {
+        const o = audio.createOscillator();
+        const g = audio.createGain();
+        o.type = "sine";
+        o.frequency.value = freq;
+        g.gain.setValueAtTime(0.0001, t + d);
+        g.gain.exponentialRampToValueAtTime(0.35, t + d + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.3);
+        o.connect(g);
+        g.connect(audio.destination);
+        o.start(t + d);
+        o.stop(t + d + 0.32);
+      });
+    } catch (e) { /* son indisponible */ }
+  }
+  function flash(card) {
+    card.classList.remove("hit");
+    void card.offsetWidth;
+    card.classList.add("hit");
+    setTimeout(() => card.classList.remove("hit"), 700);
+  }
+
+  // sign = +1 (clic sur +) ou -1 (clic sur −) ; les liens suivent en chaîne, sans boucle.
+  function press(id, sign) {
+    const changes = new Map();
+    const alerted = new Set();
+    (function go(cid, amount, path) {
+      const c = byId(cid);
+      if (!c) return;
+      const before = c.value;
+      c.value = round(c.value + amount);
+      if (c.sound && tiers(c.value, c.sound.every) > tiers(before, c.sound.every)) alerted.add(cid);
+      if (c.marks && parseMarks(c.marks.text).some(m => before < m && m <= c.value)) alerted.add(cid);
+      changes.set(cid, round((changes.get(cid) || 0) + amount));
+      const next = path.concat(cid);
+      if (next.length > 25) return;
+      for (const l of c.links) {
+        const k = tiers(c.value, l.every) - tiers(before, l.every);
+        if (!l.n || !k || next.includes(l.to)) continue;
+        go(l.to, k * l.n, next);
+      }
+    })(id, sign, []);
+
+    changes.forEach((amt, cid) => {
+      const card = list.querySelector(`.card[data-id="${cid}"]`);
+      if (!card) return;
+      card.querySelector(".value").value = byId(cid).value;
+      showPop(card, amt);
+      const cc = byId(cid);
+      if (cc.marks) {
+        const focused = document.activeElement && card.contains(document.activeElement) && document.activeElement.dataset.field === "marks";
+        refreshMarks(card, cc, focused);
+      }
+      if (cid !== id || alerted.has(cid)) flash(card);
+    });
+    save();
+    if (alerted.size) beep();
+    if (alerted.size) vibe([60, 40, 60]); else tick();
+  }
+
+  // Bouton à double appui : le premier appui demande confirmation, le second exécute.
+  function twoTap(btn, onConfirm) {
+    if (btn.dataset.armed) {
+      clearTimeout(Number(btn.dataset.armed));
+      delete btn.dataset.armed;
+      btn.classList.remove("armed");
+      btn.textContent = btn.dataset.label;
+      onConfirm();
+      return;
+    }
+    btn.dataset.label = btn.textContent;
+    btn.textContent = "Confirmer ?";
+    btn.classList.add("armed");
+    btn.dataset.armed = String(setTimeout(() => {
+      delete btn.dataset.armed;
+      btn.classList.remove("armed");
+      btn.textContent = btn.dataset.label;
+    }, 3000));
+  }
+
+  list.addEventListener("click", e => {
+    const btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    const card = btn.closest(".card");
+    const c = card && byId(Number(card.dataset.id));
+    if (!c) return;
+    switch (btn.dataset.action) {
+      case "inc": press(c.id, 1); break;
+      case "dec": press(c.id, -1); break;
+      case "addlink": {
+        const free = state.counters.filter(o => o.id !== c.id && !c.links.some(l => l.to === o.id));
+        if (free.length) { c.links.push({ to: free[0].id, n: 1, every: 1 }); save(); render(); }
+        break;
+      }
+      case "addsound":
+        c.sound = { every: 10 };
+        save(); render(); beep();
+        break;
+      case "addmarks":
+        c.marks = { text: "" };
+        save(); render();
+        { const inp = list.querySelector(`.card[data-id="${c.id}"] [data-field="marks"]`); if (inp) inp.focus(); }
+        break;
+      case "editmarks":
+        editMarks.add(c.id);
+        refreshMarks(card, c, false);
+        { const inp = card.querySelector('[data-field="marks"]'); if (inp) inp.focus(); }
+        break;
+      case "unmarks":
+        editMarks.delete(c.id);
+        c.marks = null;
+        save(); render();
+        break;
+      case "unsound":
+        c.sound = null;
+        save(); render();
+        break;
+      case "unlink": {
+        const i = Number(btn.closest(".link").dataset.i);
+        c.links.splice(i, 1);
+        save(); render();
+        break;
+      }
+      case "delete":
+        twoTap(btn, () => {
+          state.counters = state.counters.filter(o => o.id !== c.id);
+          state.counters.forEach(o => { o.links = o.links.filter(l => l.to !== c.id); });
+          save(); render();
+        });
+        break;
+    }
+  });
+
+  list.addEventListener("input", e => {
+    const t = e.target;
+    const card = t.closest(".card");
+    const c = card && byId(Number(card.dataset.id));
+    if (!c) return;
+    const f = t.dataset.field;
+    if (f === "name") {
+      c.name = t.value;
+      document.querySelectorAll(`option[value="${c.id}"]`).forEach(o => { o.textContent = label(c); });
+      save();
+    } else if (f === "value") {
+      const v = parseFloat(t.value);
+      if (Number.isFinite(v)) { c.value = round(v); save(); if (c.marks) refreshMarks(card, c, false); }
+    } else if (f === "n") {
+      const l = c.links[Number(t.closest(".link").dataset.i)];
+      const v = parseFloat(t.value);
+      if (l && Number.isFinite(v)) { l.n = round(v); save(); }
+    } else if (f === "every") {
+      const l = c.links[Number(t.closest(".link").dataset.i)];
+      const v = round(parseFloat(t.value));
+      if (l && Number.isFinite(v) && v > 0) { l.every = v; save(); }
+    } else if (f === "sound") {
+      const v = round(parseFloat(t.value));
+      if (c.sound && Number.isFinite(v) && v > 0) { c.sound.every = v; save(); }
+    } else if (f === "marks") {
+      if (c.marks) { c.marks.text = t.value; save(); refreshMarks(card, c, true); }
+    }
+  });
+
+  list.addEventListener("change", e => {
+    const t = e.target;
+    const card = t.closest(".card");
+    const c = card && byId(Number(card.dataset.id));
+    if (!c) return;
+    if (t.matches("select")) {
+      const l = c.links[Number(t.closest(".link").dataset.i)];
+      if (l) { l.to = Number(t.value); save(); render(); }
+    } else if (t.dataset.field === "value") {
+      t.value = c.value;
+    } else if (t.dataset.field === "n") {
+      const l = c.links[Number(t.closest(".link").dataset.i)];
+      if (l) t.value = l.n;
+    } else if (t.dataset.field === "every") {
+      const l = c.links[Number(t.closest(".link").dataset.i)];
+      if (l) t.value = l.every;
+    } else if (t.dataset.field === "marks") {
+      editMarks.delete(c.id);
+      refreshMarks(card, c, false);
+    } else if (t.dataset.field === "sound") {
+      if (c.sound) t.value = c.sound.every;
+    }
+  });
+
+  // "toggle" ne remonte pas : écoute en phase de capture
+  list.addEventListener("toggle", e => {
+    const d = e.target;
+    if (!d.matches || !d.matches("details.opts")) return;
+    const id = Number(d.closest(".card").dataset.id);
+    if (d.open) openOpts.add(id); else openOpts.delete(id);
+  }, true);
+
+  list.addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.target.matches("input")) e.target.blur();
+  });
+
+  document.getElementById("add").addEventListener("click", () => {
+    const c = mk(state.nextId++);
+    state.counters.push(c);
+    save(); render();
+    const card = list.querySelector(`.card[data-id="${c.id}"]`);
+    if (card) {
+      const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      card.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest" });
+    }
+  });
+
+  document.getElementById("reset").addEventListener("click", e => {
+    twoTap(e.currentTarget, () => {
+      state.counters.forEach(c => { c.value = 0; });
+      save(); render();
+    });
+  });
+
+  // Chrono : on mémorise l'horodatage de départ (et non un compteur de secondes),
+  // donc il continue quand l'app est en arrière-plan, et même si Android la ferme.
+  const CHRONO_KEY = "compteurs-lies-chrono";
+  const chronoTime = document.getElementById("chrono-time");
+  const chronoStart = document.getElementById("chrono-start");
+  const chronoReset = document.getElementById("chrono-reset");
+  let chrono = { start: null, acc: 0 }; // start = Date.now() au lancement ; acc = temps cumulé avant pause
+  try {
+    const s = JSON.parse(localStorage.getItem(CHRONO_KEY) || "null");
+    if (s && Number.isFinite(s.acc) && s.acc >= 0) {
+      chrono = { acc: s.acc, start: Number.isFinite(s.start) ? s.start : null };
+    }
+  } catch (e) { /* état illisible : chrono à zéro */ }
+  const saveChrono = () => {
+    try { localStorage.setItem(CHRONO_KEY, JSON.stringify(chrono)); } catch (e) { /* ignoré */ }
+  };
+  const elapsed = () => chrono.acc + (chrono.start != null ? Math.max(0, Date.now() - chrono.start) : 0);
+  const pad = n => String(n).padStart(2, "0");
+  function fmtChrono(ms) {
+    const t = Math.floor(ms / 1000);
+    const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+    return (h ? h + ":" + pad(m) : pad(m)) + ":" + pad(s);
+  }
+  let chronoTick = null;
+  function drawChrono() {
+    const running = chrono.start != null;
+    chronoTime.textContent = fmtChrono(elapsed());
+    chronoStart.textContent = running ? "Pause" : (chrono.acc > 0 ? "Reprendre" : "Démarrer");
+    chronoStart.classList.toggle("running", running);
+    if (!chronoReset.dataset.armed) chronoReset.hidden = !running && chrono.acc === 0;
+    clearInterval(chronoTick);
+    chronoTick = running ? setInterval(() => { chronoTime.textContent = fmtChrono(elapsed()); }, 250) : null;
+  }
+  chronoStart.addEventListener("click", () => {
+    if (chrono.start != null) { chrono.acc = elapsed(); chrono.start = null; }
+    else chrono.start = Date.now();
+    saveChrono(); drawChrono();
+  });
+  chronoReset.addEventListener("click", () => {
+    twoTap(chronoReset, () => {
+      chrono = { start: null, acc: 0 };
+      saveChrono(); drawChrono();
+    });
+  });
+  // Au retour au premier plan : rafraîchit immédiatement l'affichage
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) drawChrono(); });
+  drawChrono();
+
+  // Easter egg : 5 appuis rapides sur le titre -> gros cœur pendant 10 s (un appui le ferme)
+  const love = document.getElementById("love");
+  let taps = 0, lastTap = 0, loveTimer = null;
+  function hideLove() { clearTimeout(loveTimer); love.hidden = true; }
+  document.querySelector("h1").addEventListener("click", () => {
+    const now = Date.now();
+    taps = now - lastTap < 1500 ? taps + 1 : 1; // appuis espacés de moins de 1,5 s
+    lastTap = now;
+    if (taps < 5) return;
+    taps = 0;
+    love.hidden = false;
+    clearTimeout(loveTimer);
+    loveTimer = setTimeout(hideLove, 10000);
+    vibe([80, 120, 80]);
+  });
+  love.addEventListener("click", hideLove);
+
+  render();
+})();
+</script>
+</body>
+</html>

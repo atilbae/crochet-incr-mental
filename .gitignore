@@ -1,0 +1,8 @@
+# Artefacts de build
+build/
+
+# Secrets de signature : ne JAMAIS versionner
+*.jks
+*.keystore
+*.p12
+.env

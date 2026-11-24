@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icône vectorielle : carré arrondi rose avec un « + » -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="48" android:viewportHeight="48">
+  <path android:fillColor="#B0315A"
+      android:pathData="M10,2h28a8,8 0 0 1 8,8v28a8,8 0 0 1 -8,8h-28a8,8 0 0 1 -8,-8v-28a8,8 0 0 1 8,-8z"/>
+  <path android:fillColor="#FFE6EC"
+      android:pathData="M21,12h6v9h9v6h-9v9h-6v-9h-9v-6h9z"/>
+</vector>
